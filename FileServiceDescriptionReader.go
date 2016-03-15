@@ -24,7 +24,7 @@ func (fileServiceDescriptionReader *FileServiceDescriptionReader) Read() []*Serv
         log.Fatal(err)
     }
     
-    log.Printf("data read: %s\n", data)
+    //log.Printf("data read: %s\n", data)
     
     var services []*ServiceDescription
     if err:= json.Unmarshal(data, &services); err != nil {

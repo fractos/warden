@@ -122,12 +122,14 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
 } // startRegistrar
 
 func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *ServiceDescription) {
-    
+
 } // ensureServiceHasFrontend
 
 func (warden *Warden) getMatchingContainers(logger func(s string), containerName string) []string {
     logger(fmt.Sprintf("getMatchingContainers('%s')...", containerName))
-    out, err := exec.Command(fmt.Sprintf("docker ps -a | grep %s", containerName)).Output()
+    cmdName := "docker"
+    cmdArgs := []string{"ps", "-a"}
+    out, err := exec.Command(cmdName, cmdArgs...).Output()
     if err != nil {
         logger(fmt.Sprintf("getMatchingContainers: problem: %s\n", err))
         panic(err)

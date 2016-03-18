@@ -6,16 +6,19 @@ import (
 //    "strconv"
     "gopkg.in/redis.v3"
 //    "github.com/aws/aws-sdk-go"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/aws/ec2metadata"
     // "os/exec"
 )
 
 // Warden holds basic instance data plus redis clients for both global service management and intra-host load-balancing.
 type Warden struct {
+    region string
     availabilityZone string
     instanceId string
     services []*ServiceDescription
     redisServiceManagement *redis.Client
-    redisLocal *redis.Client    
+    redisLocal *redis.Client
 }
 
 const MaxHeartbeatAge = 300
@@ -31,6 +34,7 @@ func (warden *Warden) Start() {
     // fetch some runtime constants:    
     //   get instance ID
     //   get current availability zone
+    warden.region = warden.getRegion(func(s string) { fmt.Printf("warden: %s\n", s) })
     warden.availabilityZone = warden.getAvailabilityZone(func(s string) { fmt.Printf("warden: %s\n", s) })
     warden.instanceId = warden.getInstanceId(func(s string) { fmt.Printf("warden: %s\n", s) })
 
@@ -96,5 +100,17 @@ func (warden *Warden) getAvailabilityZone(logger func(s string)) string {
 
 func (warden *Warden) getInstanceId(logger func(s string)) string {
     logger("getting instance Id")
+    //warden.ec2Service = ec2.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
+    
     return "def1"
 } // getInstanceId
+
+func (warden *Warden) getRegion(logger func(s string)) string {
+    logger("getting region")
+    m := ec2metadata.New(session.New())
+    region, err := m.Region()
+    if err != nil {
+        panic(err)
+    }
+    return region 
+} // getRegion

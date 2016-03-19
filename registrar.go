@@ -51,7 +51,12 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
             warden.ensureServiceHasFrontend(logger, service)
 
             backendAddressesForService := warden.getServiceBackends(logger, service)
-                        
+            
+            if backendAddressesForService == nil {
+                logger("problem while inspecting backends detected")
+                break
+            }
+            
             logger("matching backends to list of active containers")
             
             for _, backendAddress := range backendAddressesForService {
@@ -142,6 +147,11 @@ func (warden *Warden) getServiceBackends(logger func(s string), service *Service
     
     result, err := warden.redisLocal.HGetAllMap(backendName).Result()
 
+    if err != nil {
+        logger(fmt.Sprintf("problem while getting backend hash from redis: %s", err))
+        return nil
+    }
+    
     // pre-allocate size of slice    
     keys := make([]string, len(result))
     i := 0
@@ -266,7 +276,7 @@ func (warden *Warden) registerServiceWithLoadBalancer(logger func (s string), se
         LoadBalancerName: aws.String(service.LoadBalancerName),
     }
     
-    resp, err := svc.RegisterInstancesWithLoadBalancer(params)
+    _, err := svc.RegisterInstancesWithLoadBalancer(params)
     
     if err != nil {
         logger(fmt.Sprintf("problem while registering service with load balancer: %s", err))
@@ -286,7 +296,7 @@ func (warden *Warden) deregisterServiceFromLoadBalancer(logger func (s string), 
         LoadBalancerName: aws.String(service.LoadBalancerName),
     }
     
-    resp, err := svc.DeregisterInstancesFromLoadBalancer(params)
+    _, err := svc.DeregisterInstancesFromLoadBalancer(params)
     
     if err != nil {
         logger(fmt.Sprintf("problem while deregistering service from load balancer: %s", err))

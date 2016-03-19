@@ -6,7 +6,9 @@ import (
     "strings"
     "regexp"
 //    "strconv"
-//    "github.com/aws/aws-sdk-go"
+    "github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/elb"
     "os/exec"
 )
 
@@ -19,16 +21,6 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
             
             // for each service description:
             logger(fmt.Sprintf("service: %s.", service.Name))
-            
-            // get list of containers for this image name
-            containers := warden.getMatchingContainers(logger, service.Name)
-                        
-            //   ensure service has a frontend defined in redis
-            warden.ensureServiceHasFrontend(logger, service)
-
-            for _, container := range containers {
-                logger(fmt.Sprintf("container: %s - ", container.Id, container.IPAddress))
-            }
             
             //   synchronise backends with redis, i.e.:
             //     get list of backends from redis
@@ -45,7 +37,91 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
             //         if there is no backend for this container:
             //           add backend details to redis
             //       if added any backend details to redis:
-            //         ensure registered with the load balancer    
+            //         ensure registered with the load balancer
+                        
+            // get list of containers for this image name
+            containers := warden.getMatchingContainers(logger, service.Name)
+
+            if containers == nil {
+                logger("problem while inspecting containers detected")
+                break
+            }
+
+            //   ensure service has a frontend defined in redis
+            warden.ensureServiceHasFrontend(logger, service)
+
+            backendAddressesForService := warden.getServiceBackends(logger, service)
+                        
+            logger("matching backends to list of active containers")
+            
+            for _, backendAddress := range backendAddressesForService {
+                logger(fmt.Sprintf("matching backend with address %s", backendAddress))
+
+                var containerToRemove = -1
+                
+                for containerIndex, container := range containers {
+                    containerAddress := fmt.Sprintf("%s:%d", container.IPAddress, service.Port)
+                    if containerAddress == backendAddress {
+                        logger(fmt.Sprintf("found container for backend, id:%s, ipaddress:%s", container.Id, container.IPAddress))
+                        containerToRemove = containerIndex
+                        break
+                    }    
+                }
+                
+                if containerToRemove > -1 {
+                    logger(fmt.Sprintf("removing container at position %d", containerToRemove))
+                    containers = append(containers[:containerToRemove], containers[containerToRemove+1])
+                    logger(fmt.Sprintf("container slice now length %d", len(containers)))
+                    
+                    warden.removeBackend(logger, service, backendAddress)
+                }
+            }
+
+            if len(containers) == 0 {
+                logger("there are 0 active containers")
+                if len(backendAddressesForService) == 0 {
+                    logger("and there are 0 backends registered")
+                    logger("this host will now be deregistered from the load balancer for this service")
+                    warden.deregisterServiceFromLoadBalancer(logger, service)
+                } else {
+                    logger("at least one backend registered")
+                    logger("this host will now be (re-)registered to the load balancer for this service")
+                    warden.registerServiceWithLoadBalancer(logger, service)
+                }
+                
+                // done with this service
+                break                
+            }
+
+            logger("at least one active container")
+
+            addedServer := false
+
+            for _, container := range containers {
+                logger(fmt.Sprintf("matching container with id:%s ipaddress:%s", container.Id, container.IPAddress))
+                
+                containerAddress := fmt.Sprintf("%s:%d", container.IPAddress, service.Port)
+                
+                backendFound := false
+                
+                for _, backendAddress := range backendAddressesForService {
+                    if containerAddress == backendAddress {
+                        backendFound = true
+                        break
+                    }
+                }
+                
+                if !backendFound {
+                    logger(fmt.Sprintf("need backend for container with id:%s ipaddress:%s", container.Id, container.IPAddress))
+                    warden.addBackend(logger, service, containerAddress)
+                    addedServer = true
+                }
+            }
+            
+            if addedServer {
+                logger("at least one server was added so ensuring registered to the load balancer for this service")
+                warden.registerServiceWithLoadBalancer(logger, service)
+            }
         }       
         
         time.Sleep(1 * time.Second)
@@ -58,6 +134,24 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
         }
     }
 } // startRegistrar
+
+func (warden *Warden) getServiceBackends(logger func(s string), service *ServiceDescription) []string {
+    logger(fmt.Sprintf("getServiceBackends('%s')", service.Name))
+    
+    backendName := fmt.Sprintf("backend:%s", service.BackendName)
+    
+    result, err := warden.redisLocal.HGetAllMap(backendName).Result()
+
+    // pre-allocate size of slice    
+    keys := make([]string, len(result))
+    i := 0
+    for k := range result {
+        keys[i] = k
+        i++
+    }
+    
+    return keys
+} // getServiceBackends
 
 func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *ServiceDescription) {
     logger(fmt.Sprintf("ensureServiceHasFrontend('%s')", service.Name))
@@ -90,6 +184,26 @@ func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *S
     }
 } // ensureServiceHasFrontend
 
+func (warden *Warden) removeBackend(logger func(s string), service *ServiceDescription, backendAddress string) {
+    logger(fmt.Sprintf("removeBackend('%s', '%s')", service.Site, backendAddress))
+    
+    backendName := fmt.Sprintf("backend:%s", service.BackendName)
+    err := warden.redisLocal.HDel(backendName, backendAddress).Err()
+    if err != nil {
+        logger(fmt.Sprintf("problem while trying to remove backend: %s", err))
+    }
+} // removeBackend
+
+func (warden *Warden) addBackend(logger func(s string), service *ServiceDescription, address string) {
+    logger(fmt.Sprintf("addBackend('%s', '%s')", service.Name, address))
+    
+    backendName := fmt.Sprintf("backend:%s", service.BackendName)
+    err := warden.redisLocal.HSet(backendName, address, "0").Err()
+    if err != nil {
+        logger(fmt.Sprintf("problem while trying to add backend: %s", err))
+    }
+} // addBackend
+
 func (warden *Warden) getMatchingContainers(logger func(s string), containerName string) []Container {
     logger(fmt.Sprintf("getMatchingContainers('%s')...", containerName))
     cmdName := "docker"
@@ -97,7 +211,7 @@ func (warden *Warden) getMatchingContainers(logger func(s string), containerName
     out, err := exec.Command(cmdName, cmdArgs...).Output()
     if err != nil {
         logger(fmt.Sprintf("getMatchingContainers: problem: %s\n", err))
-        panic(err)
+        return nil
     }
     
     lines := strings.Split(string(out), "\n")
@@ -138,3 +252,43 @@ func (warden *Warden) getContainerIPAddress(logger func(s string), containerId s
     
     return ""
 } // inspectContainer
+
+func (warden *Warden) registerServiceWithLoadBalancer(logger func (s string), service *ServiceDescription) {
+    logger(fmt.Sprintf("registerServiceWithLoadBalancer('%s')", service.Name))
+    svc := elb.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
+    
+    params := &elb.RegisterInstancesWithLoadBalancerInput{
+        Instances: []*elb.Instance{
+            {
+                InstanceId: aws.String(warden.instanceId),
+            },
+        },
+        LoadBalancerName: aws.String(service.LoadBalancerName),
+    }
+    
+    resp, err := svc.RegisterInstancesWithLoadBalancer(params)
+    
+    if err != nil {
+        logger(fmt.Sprintf("problem while registering service with load balancer: %s", err))
+    }
+} // registerServiceWithLoadBalancer
+
+func (warden *Warden) deregisterServiceFromLoadBalancer(logger func (s string), service *ServiceDescription) {
+    logger(fmt.Sprintf("deregisterServiceFromLoadBalancer('%s')", service.Name))
+    svc := elb.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
+    
+    params := &elb.DeregisterInstancesFromLoadBalancerInput{
+        Instances: []*elb.Instance{
+            {
+                InstanceId: aws.String(warden.instanceId),
+            },
+        },
+        LoadBalancerName: aws.String(service.LoadBalancerName),
+    }
+    
+    resp, err := svc.DeregisterInstancesFromLoadBalancer(params)
+    
+    if err != nil {
+        logger(fmt.Sprintf("problem while deregistering service from load balancer: %s", err))
+    }
+} // deregisterServiceFromLoadBalancer

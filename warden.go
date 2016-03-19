@@ -41,7 +41,7 @@ func (warden *Warden) Start() {
     //   get current availability zone
     warden.region, warden.availabilityZone, warden.instanceId = warden.getInstanceIdentity(wardenLog)
 
-    wardenLog(fmt.Sprintf("region is %s\navailability zone is %s\ninstance ID is %s", warden.region, warden.availabilityZone, warden.instanceId))
+    wardenLog(fmt.Sprintf("region is %s, availability zone is %s, instance ID is %s", warden.region, warden.availabilityZone, warden.instanceId))
 
     configReader := NewConfigurationReader("config.json")
     configuration := configReader.Read()
@@ -98,9 +98,14 @@ func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string
         panic(err)
     }
     
-    logger(fmt.Sprintf("%s", resp))
+    var zones []string
     
-    zones := []string { "eu-west-1a", "eu-west-1b", "eu-west-1c" }
+    for _, az := range resp.AvailabilityZones {
+        if *az.State == "available" {
+            zones = append(zones, *az.ZoneName)
+        }
+    }
+    
     return zones
 } // getActiveAvailabilityZones
 

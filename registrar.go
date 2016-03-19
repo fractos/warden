@@ -40,7 +40,7 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
             //         ensure registered with the load balancer
                         
             // get list of containers for this image name
-            containers := warden.getMatchingContainers(logger, service.Name)
+            containers := warden.getMatchingContainers(logger, service.ContainerName)
 
             if containers == nil {
                 logger("problem while inspecting containers detected")

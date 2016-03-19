@@ -79,7 +79,7 @@ func (warden *Warden) getMatchingContainers(logger func(s string), containerName
      
     for _, line := range lines {
         if strings.Contains(line, containerName) {
-            re1, _ := regexp.Compile(`^(.*?)\w.*$`)
+            re1, _ := regexp.Compile(`^(.*?)\s.*$`)
             containerId := re1.FindStringSubmatch(line)[1]
             containers = append(containers, containerId)
         }

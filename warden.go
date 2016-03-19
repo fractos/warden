@@ -5,7 +5,7 @@ import (
     "time"
 //    "strconv"
     "gopkg.in/redis.v3"
-//    "github.com/aws/aws-sdk-go"
+    "github.com/aws/aws-sdk-go/aws"
     "github.com/aws/aws-sdk-go/service/ec2"
     "github.com/aws/aws-sdk-go/aws/session"
     "github.com/aws/aws-sdk-go/aws/ec2metadata"
@@ -89,7 +89,11 @@ func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string
     
     svc := ec2.New(session.New())
     
-    resp, err := svc.DescribeAvailabilityZones(nil)
+    params := &ec2.DescribeAvailabilityZonesInput {
+        DryRun: aws.Bool(false),
+    }
+    
+    resp, err := svc.DescribeAvailabilityZones(params)
     
     if err != nil {
         panic(err)

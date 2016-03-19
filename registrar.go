@@ -75,7 +75,7 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
                 
                 if containerToRemove > -1 {
                     logger(fmt.Sprintf("removing container at position %d", containerToRemove))
-                    containers = append(containers[:containerToRemove], containers[containerToRemove+1])
+                    containers = append(containers[:containerToRemove], containers[containerToRemove+1]...)
                     logger(fmt.Sprintf("container slice now length %d", len(containers)))
                     
                     warden.removeBackend(logger, service, backendAddress)
@@ -177,13 +177,13 @@ func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *S
     }
     
     if frontendExists {
-        logger(fmt.Sprintf("found frontend for %s", service.Site))
+        logger(fmt.Sprintf("found frontend for %s", service.Name))
         // frontendContents, err := warden.redisLocal.Get(frontendName).Result()
         // if frontendContents != service.BackendName {
         //     logger(fmt.Sprintf("frontend for %s doesn't match backend name %s (actual: %s)", service.Site, service.BackendName, frontendContents))
         // }
     } else {
-        logger(fmt.Sprintf("no frontend found for %s", service.Site))
+        logger(fmt.Sprintf("no frontend found for %s", service.Name))
         
         err := warden.redisLocal.Set(frontendName, service.BackendName, 0).Err()
         
@@ -195,7 +195,7 @@ func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *S
 } // ensureServiceHasFrontend
 
 func (warden *Warden) removeBackend(logger func(s string), service *ServiceDescription, backendAddress string) {
-    logger(fmt.Sprintf("removeBackend('%s', '%s')", service.Site, backendAddress))
+    logger(fmt.Sprintf("removeBackend('%s', '%s')", service.Name, backendAddress))
     
     backendName := fmt.Sprintf("backend:%s", service.BackendName)
     err := warden.redisLocal.HDel(backendName, backendAddress).Err()

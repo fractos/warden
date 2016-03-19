@@ -77,8 +77,10 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
                     logger(fmt.Sprintf("removing container at position %d", containerToRemove))
                     containers = append(containers[:containerToRemove], containers[containerToRemove+1:]...)
                     logger(fmt.Sprintf("container slice now length %d", len(containers)))
-                    
+                } else {
+                    logger("no container found for backend")
                     warden.removeBackend(logger, service, backendAddress)
+                    break
                 }
             }
 

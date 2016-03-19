@@ -3,6 +3,7 @@ package warden
 import (
     "fmt"
     "time"
+    "strings"
 //    "strconv"
     "gopkg.in/redis.v3"
     "github.com/aws/aws-sdk-go/aws"
@@ -88,14 +89,15 @@ func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string
     
     svc := ec2.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
     
-    params := &ec2.DescribeAvailabilityZonesInput {
-        DryRun: aws.Bool(false),
-    }
+    // params := &ec2.DescribeAvailabilityZonesInput {
+    //     DryRun: aws.Bool(false),
+    // }
     
-    resp, err := svc.DescribeAvailabilityZones(params)
+    resp, err := svc.DescribeAvailabilityZones(nil)
     
     if err != nil {
-        panic(err)
+        logger(fmt.Sprintf("error: %s", err))
+        return nil
     }
     
     var zones []string
@@ -105,6 +107,8 @@ func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string
             zones = append(zones, *az.ZoneName)
         }
     }
+    
+    logger(fmt.Sprintf("active availability zones: %s", strings.Join(zones, ", ")))
     
     return zones
 } // getActiveAvailabilityZones
@@ -132,9 +136,11 @@ func (warden *Warden) availabilityZoneIsActive(logger func(s string), z string) 
     // get list of active availability zones
     activeZones := warden.getActiveAvailabilityZones(logger)
     
-    for _, v := range activeZones {
-        if v == z {
-            return true
+    if activeZones != nil {
+        for _, v := range activeZones {
+            if v == z {
+                return true
+            }
         }
     }
     

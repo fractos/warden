@@ -58,8 +58,6 @@ func (warden *Warden) Start() {
         wardenLog("our availability zone is not active!")
     }
 
-    panic("gulp")
-
     warden.redisServiceManagement = redis.NewClient(&redis.Options{
         Addr: configuration.ServiceManagementRedisAddress,
         Password: "",
@@ -73,7 +71,10 @@ func (warden *Warden) Start() {
     })
     
     // start registrar coroutine
-    go warden.startRegistrar(func(s string) { fmt.Printf("registrar: %s\n", s) })
+    warden.startRegistrar(func(s string) { fmt.Printf("registrar: %s\n", s) })
+    
+        panic("gulp")
+
     // start manager coroutine
     warden.startManager(func(s string) { fmt.Printf("manager: %s\n", s) })
     
@@ -88,10 +89,6 @@ func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string
     logger("getActiveAvailabilityZones")
     
     svc := ec2.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
-    
-    // params := &ec2.DescribeAvailabilityZonesInput {
-    //     DryRun: aws.Bool(false),
-    // }
     
     resp, err := svc.DescribeAvailabilityZones(nil)
     

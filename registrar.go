@@ -3,6 +3,8 @@ package warden
 import (
     "fmt"
     "time"
+    "strings"
+    "regexp"
 //    "strconv"
     "gopkg.in/redis.v3"
 //    "github.com/aws/aws-sdk-go"
@@ -77,5 +79,20 @@ func (warden *Warden) getMatchingContainers(logger func(s string), containerName
         logger(fmt.Sprintf("getMatchingContainers: problem: %s\n", err))
         panic(err)
     }
-    return []string { fmt.Sprintf("%s", out) }
+    
+    lines := strings.Split(string(out), "\n")
+    
+    var containers []string
+     
+    for _, line := range lines {
+        if strings.Contains(line, containerName) {
+            re1, _ := regexp.Compile(`^(.*?)\w.*$`)
+            containerId := re1.FindStringSubmatch(line)[1]
+            containers = append(containers, containerId)
+        }
+    }
+    
+    logger(fmt.Sprintf("found containers: %s", strings.Join(containers, ", ")))
+    
+    return containers
 } // getMatchingContainers

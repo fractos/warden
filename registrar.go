@@ -51,13 +51,7 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
         
         time.Sleep(1 * time.Second)
         
-        client := redis.NewClient(&redis.Options{
-            Addr:     "localhost:6379",
-            Password: "", // no password set
-            DB:       0,  // use default DB
-        })
-
-        pong, err := client.Ping().Result()
+        pong, err := warden.redisLocal.Ping().Result()
         if err != nil {
             panic(err)
         } else {

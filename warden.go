@@ -83,11 +83,16 @@ func (warden *Warden) ourAvailabilityZoneIsActive(logger func(s string)) bool {
     return warden.availabilityZoneIsActive(logger, warden.availabilityZone)
 } // ourAvailabilityZoneIsActive
 
+func (warden *Warden) getEC2Client(logger func(s string)) *EC2 {
+    logger("getEC2Client")
+    return ec2.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
+} // getEC2Client
+
 // TODO
 func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string {
     logger("getActiveAvailabilityZones")
     
-    svc := ec2.New(session.New())
+    svc := warden.getEC2Client(logger)
     
     params := &ec2.DescribeAvailabilityZonesInput {
         DryRun: aws.Bool(false),

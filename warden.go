@@ -6,6 +6,7 @@ import (
 //    "strconv"
     "gopkg.in/redis.v3"
 //    "github.com/aws/aws-sdk-go"
+    "github.com/aws/aws-sdk-go/service/ec2"
     "github.com/aws/aws-sdk-go/aws/session"
     "github.com/aws/aws-sdk-go/aws/ec2metadata"
     // "os/exec"
@@ -94,9 +95,9 @@ func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string
         panic(err)
     }
     
-    logger(resp)
+    logger(fmt.Sprintf("%s", resp))
     
-    //zones := []string { "eu-west-1a", "eu-west-1b", "eu-west-1c" }
+    zones := []string { "eu-west-1a", "eu-west-1b", "eu-west-1c" }
     return zones
 } // getActiveAvailabilityZones
 

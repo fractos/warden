@@ -50,6 +50,14 @@ func (warden *Warden) Start() {
 
     warden.services = (serviceDescriptionReader).Read()
 
+    if warden.ourAvailabilityZoneIsActive(wardenLog) {
+        wardenLog("our availability zone is active")
+    } else {
+        wardenLog("our availability zone is not active!")
+    }
+
+    panic("gulp")
+
     warden.redisServiceManagement = redis.NewClient(&redis.Options{
         Addr: configuration.ServiceManagementRedisAddress,
         Password: "",
@@ -78,7 +86,17 @@ func (warden *Warden) ourAvailabilityZoneIsActive(logger func(s string)) bool {
 func (warden *Warden) getActiveAvailabilityZones(logger func(s string)) []string {
     logger("getActiveAvailabilityZones")
     
-    zones := []string { "eu-west-1a", "eu-west-1b", "eu-west-1c" }
+    svc := ec2.New(session.New())
+    
+    resp, err := svc.DescribeAvailabilityZones(nil)
+    
+    if err != nil {
+        panic(err)
+    }
+    
+    logger(resp)
+    
+    //zones := []string { "eu-west-1a", "eu-west-1b", "eu-west-1c" }
     return zones
 } // getActiveAvailabilityZones
 

@@ -169,7 +169,7 @@ func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *S
     // use warden.redisLocal client to check if this service has a frontend in nginx
     // check redis for 'frontend:' + service.Site
     
-    frontendName := fmt.Sprintf("frontend:%s", service.Site)
+    frontendName := fmt.Sprintf("frontend:%s%s", service.LoadBalancerUrl, service.Site)
     frontendExists, err := warden.redisLocal.Exists(frontendName).Result()
     if err != nil {
         logger(fmt.Sprintf("problem while checking redis: %s", err))

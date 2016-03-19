@@ -21,3 +21,12 @@ type ServiceDescription struct {
 type ServiceDescriptionReader interface {
     Read() []*ServiceDescription
 }
+
+// Configuration holds the basic environment information for Warden including Redis details and the name of the service description file
+type Configuration struct {
+    ServiceManagementRedisAddress string `json:"serviceManagementRedisAddress"`
+    ServiceManagementRedisDatabaseNumber int64 `json:"serviceManagementRedisDatabaseNumber"`
+    NginxRedisAddress string `json:"nginxRedisAddress"`
+    NginxRedisDatabaseNumber int64 `json:"nginxRedisDatabaseNumber"`
+    ServiceDescriptionFilename string `json:"serviceDescriptionFilename"`
+}

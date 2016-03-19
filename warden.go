@@ -27,39 +27,39 @@ const ActivityPause = 300
 const ServiceManagerPause = 30
 const CandidateExpiry = 30
 
+func wardenLog(s string) {
+    fmt.Printf("warden: %s\n", s)
+} // WardenLog
+
 // Start will run both the registrar and manager co-routines.
 func (warden *Warden) Start() {
-    fmt.Println("Warden starting...")
+    wardenLog("starting...")
     
     // fetch some runtime constants:    
     //   get instance ID
     //   get current availability zone
-    warden.region, warden.availabilityZone, warden.instanceId = warden.getInstanceIdentity(func(s string) { fmt.Printf("warden: %s\n", s) })
+    warden.region, warden.availabilityZone, warden.instanceId = warden.getInstanceIdentity(wardenLog)
 
-    panic(warden.instanceId)
+    wardenLog(fmt.Sprintf("region is %s\navailability zone is %s\ninstance ID is %s", warden.region, warden.availabilityZone, warden.instanceId))
 
-    serviceManagementRedisAddress := "localhost:6379"
-    var serviceManagementRedisDatabaseNumber int64 = 11
-    nginxRedisAddress := "localhost:6379"
-    var nginxRedisDatabaseNumber int64 = 15
-
-    var serviceDescriptionReaderConfig = "services.json"
-
+    configReader := NewConfigurationReader("config.json")
+    configuration := configReader.Read()
+    
     var serviceDescriptionReader ServiceDescriptionReader
-    serviceDescriptionReader = NewFileServiceDescriptionReader(serviceDescriptionReaderConfig)
+    serviceDescriptionReader = NewFileServiceDescriptionReader(configuration.ServiceDescriptionFilename)
 
     warden.services = (serviceDescriptionReader).Read()
 
     warden.redisServiceManagement = redis.NewClient(&redis.Options{
-        Addr: serviceManagementRedisAddress,
+        Addr: configuration.ServiceManagementRedisAddress,
         Password: "",
-        DB: serviceManagementRedisDatabaseNumber,
+        DB: configuration.ServiceManagementRedisDatabaseNumber,
     })
     
     warden.redisLocal = redis.NewClient(&redis.Options{
-        Addr: nginxRedisAddress,
+        Addr: configuration.NginxRedisAddress,
         Password: "",
-        DB: nginxRedisDatabaseNumber,
+        DB: configuration.NginxRedisDatabaseNumber,
     })
     
     // start registrar coroutine
@@ -69,8 +69,6 @@ func (warden *Warden) Start() {
     
     fmt.Println("Warden finishing...")    
 } // main
-
-
 
 func (warden *Warden) ourAvailabilityZoneIsActive(logger func(s string)) bool {
     return warden.availabilityZoneIsActive(logger, warden.availabilityZone)
@@ -103,28 +101,15 @@ func (warden *Warden) getInstanceIdentity(logger func(s string)) (string, string
     return doc.Region, doc.AvailabilityZone, doc.InstanceID
 } // getInstanceIdentity
 
-func (warden *Warden) getAvailabilityZone(logger func(s string)) string {
-    logger("getting availability zone")
-    m := ec2metadata.New(session.New())
-    doc, err := m.GetInstanceIdentityDocument()
-    if err != nil {
-        panic(err)
-    }
-    return doc.AvailabilityZone
-} // getAvailabilityZone
-
-func (warden *Warden) getInstanceId(logger func(s string)) string {
-    logger("getting instance Id")
+func (warden *Warden) availabilityZoneIsActive(logger func(s string), z string) bool {
+    // get list of active availability zones
+    activeZones := warden.getActiveAvailabilityZones(logger)
     
-    return "def1"
-} // getInstanceId
-
-func (warden *Warden) getRegion(logger func(s string)) string {
-    logger("getting region")
-    m := ec2metadata.New(session.New())
-    region, err := m.Region()
-    if err != nil {
-        panic(err)
+    for _, v := range activeZones {
+        if v == z {
+            return true
+        }
     }
-    return region 
-} // getRegion
+    
+    return false
+} // availabilityZoneIsActive

@@ -79,16 +79,3 @@ func (warden *Warden) getMatchingContainers(logger func(s string), containerName
     }
     return []string { fmt.Sprintf("%s", out) }
 } // getMatchingContainers
-
-func (warden *Warden) availabilityZoneIsActive(logger func(s string), z string) bool {
-    // get list of active availability zones
-    activeZones := warden.getActiveAvailabilityZones(logger)
-    
-    for _, v := range activeZones {
-        if v == z {
-            return true
-        }
-    }
-    
-    return false
-} // availabilityZoneIsActive

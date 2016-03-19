@@ -10,10 +10,12 @@ import (
 //    "strconv"
 )
 
+
 type FileServiceDescriptionReader struct {
     config string
 }
 
+// New creates a new instance of the service description reader for this passed filename
 func NewFileServiceDescriptionReader(config string) *FileServiceDescriptionReader {
     return &FileServiceDescriptionReader{config: config}
 } // NewFileServiceDescriptionReader

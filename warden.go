@@ -34,9 +34,9 @@ func (warden *Warden) Start() {
     // fetch some runtime constants:    
     //   get instance ID
     //   get current availability zone
-    warden.region = warden.getRegion(func(s string) { fmt.Printf("warden: %s\n", s) })
-    warden.availabilityZone = warden.getAvailabilityZone(func(s string) { fmt.Printf("warden: %s\n", s) })
-    warden.instanceId = warden.getInstanceId(func(s string) { fmt.Printf("warden: %s\n", s) })
+    warden.region, warden.availabilityZone, warden.instanceId = warden.getInstanceIdentity(func(s string) { fmt.Printf("warden: %s\n", s) })
+
+    panic(warden.instanceId)
 
     serviceManagementRedisAddress := "localhost:6379"
     var serviceManagementRedisDatabaseNumber int64 = 11
@@ -93,14 +93,28 @@ func (warden *Warden) getTimeDifference(logger func(s string), t1 string, t2 str
     return int(duration.Seconds())
 } // getTimeDifference
 
+func (warden *Warden) getInstanceIdentity(logger func(s string)) (string, string, string) {
+    logger("getting instance identity")
+    m := ec2metadata.New(session.New())
+    doc, err := m.GetInstanceIdentityDocument()
+    if err != nil {
+        panic(err)
+    }
+    return doc.Region, doc.AvailabilityZone, doc.InstanceID
+} // getInstanceIdentity
+
 func (warden *Warden) getAvailabilityZone(logger func(s string)) string {
     logger("getting availability zone")
-    return "eu-west-1a"
+    m := ec2metadata.New(session.New())
+    doc, err := m.GetInstanceIdentityDocument()
+    if err != nil {
+        panic(err)
+    }
+    return doc.AvailabilityZone
 } // getAvailabilityZone
 
 func (warden *Warden) getInstanceId(logger func(s string)) string {
     logger("getting instance Id")
-    //warden.ec2Service = ec2.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
     
     return "def1"
 } // getInstanceId

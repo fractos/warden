@@ -30,3 +30,8 @@ type Configuration struct {
     NginxRedisDatabaseNumber int64 `json:"nginxRedisDatabaseNumber"`
     ServiceDescriptionFilename string `json:"serviceDescriptionFilename"`
 }
+
+type Container struct {
+    Id string
+    IPAddress string
+}

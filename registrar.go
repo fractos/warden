@@ -6,7 +6,6 @@ import (
     "strings"
     "regexp"
 //    "strconv"
-    "gopkg.in/redis.v3"
 //    "github.com/aws/aws-sdk-go"
     "os/exec"
 )

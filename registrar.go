@@ -26,6 +26,10 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
             //   ensure service has a frontend defined in redis
             warden.ensureServiceHasFrontend(logger, service)
 
+            for _, container := range containers {
+                logger(fmt.Sprintf("container: %s - ", container.Id, container.IPAddress))
+            }
+            
             //   synchronise backends with redis, i.e.:
             //     get list of backends from redis
             //     check each backend to see if it has a matching running container.

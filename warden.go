@@ -71,7 +71,7 @@ func (warden *Warden) Start() {
     })
     
     // start registrar coroutine
-    warden.startRegistrar(func(s string) { fmt.Printf("registrar: %s\n", s) }, configuration)
+    go warden.startRegistrar(func(s string) { fmt.Printf("registrar: %s\n", s) }, configuration)
     
     // start manager coroutine
     warden.startManager(func(s string) { fmt.Printf("manager: %s\n", s) }, configuration)

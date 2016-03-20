@@ -85,7 +85,7 @@ func (warden *Warden) startRegistrar(logger func(s string), configuration *Confi
             }
 
             if len(containers) == 0 {
-                logger("there are 0 active containers")
+                logger("there are no unregistered containers")
                 if len(backendAddressesForService) == 0 {
                     logger("and there are 0 backends registered")
                     logger("this host will now be deregistered from the load balancer for this service")

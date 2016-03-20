@@ -43,7 +43,7 @@ func (warden *Warden) startRegistrar(logger func(s string), configuration *Confi
             containers := warden.getMatchingContainers(logger, service.ContainerName)
 
             if containers == nil {
-                logger("problem while inspecting containers detected")
+                logger("... problem while inspecting containers detected")
                 break
             }
 
@@ -53,46 +53,45 @@ func (warden *Warden) startRegistrar(logger func(s string), configuration *Confi
             backendAddressesForService := warden.getServiceBackends(logger, service)
             
             if backendAddressesForService == nil {
-                logger("problem while inspecting backends detected")
+                logger("... problem while inspecting backends detected")
                 break
             }
             
-            logger("matching backends to list of active containers")
+            logger("... matching backends to list of active containers")
             
             for _, backendAddress := range backendAddressesForService {
-                logger(fmt.Sprintf("matching backend with address %s", backendAddress))
+                logger(fmt.Sprintf("... matching backend with address %s", backendAddress))
 
                 var containerToRemove = -1
                 
                 for containerIndex, container := range containers {
                     containerAddress := fmt.Sprintf("%s:%d", container.IPAddress, service.Port)
                     if containerAddress == backendAddress {
-                        logger(fmt.Sprintf("found container for backend, id:%s, ipaddress:%s", container.Id, container.IPAddress))
+                        logger(fmt.Sprintf("... found container for backend, id:%s, ipaddress:%s", container.Id, container.IPAddress))
                         containerToRemove = containerIndex
                         break
                     }    
                 }
                 
                 if containerToRemove > -1 {
-                    logger(fmt.Sprintf("removing container at position %d", containerToRemove))
+                    logger(fmt.Sprintf("... removing container at position %d", containerToRemove))
                     containers = append(containers[:containerToRemove], containers[containerToRemove+1:]...)
-                    logger(fmt.Sprintf("container slice now length %d", len(containers)))
                 } else {
-                    logger("no container found for backend")
+                    logger("... no container found for backend")
                     warden.removeBackend(logger, service, backendAddress)
                     break
                 }
             }
 
             if len(containers) == 0 {
-                logger("there are no unregistered containers")
+                logger("... there are no unregistered containers")
                 if len(backendAddressesForService) == 0 {
-                    logger("and there are 0 backends registered")
-                    logger("this host will now be deregistered from the load balancer for this service")
+                    logger("... and there are 0 backends registered")
+                    logger("... this host will now be deregistered from the load balancer for this service")
                     warden.deregisterServiceFromLoadBalancer(logger, service)
                 } else {
-                    logger("at least one backend registered")
-                    logger("this host will now be (re-)registered to the load balancer for this service")
+                    logger("... at least one backend registered")
+                    logger("... this host will now be (re-)registered to the load balancer for this service")
                     warden.registerServiceWithLoadBalancer(logger, service)
                 }
                 
@@ -100,12 +99,12 @@ func (warden *Warden) startRegistrar(logger func(s string), configuration *Confi
                 break                
             }
 
-            logger("at least one active container")
+            logger("... at least one container is active")
 
             addedServer := false
 
             for _, container := range containers {
-                logger(fmt.Sprintf("matching container with id:%s ipaddress:%s", container.Id, container.IPAddress))
+                logger(fmt.Sprintf("... matching container with id:%s ipaddress:%s", container.Id, container.IPAddress))
                 
                 containerAddress := fmt.Sprintf("%s:%d", container.IPAddress, service.Port)
                 
@@ -119,14 +118,14 @@ func (warden *Warden) startRegistrar(logger func(s string), configuration *Confi
                 }
                 
                 if !backendFound {
-                    logger(fmt.Sprintf("need backend for container with id:%s ipaddress:%s", container.Id, container.IPAddress))
+                    logger(fmt.Sprintf("... need backend for container with id:%s ipaddress:%s", container.Id, container.IPAddress))
                     warden.addBackend(logger, service, containerAddress)
                     addedServer = true
                 }
             }
             
             if addedServer {
-                logger("at least one server was added so ensuring registered to the load balancer for this service")
+                logger("... at least one server was added so ensuring registered to the load balancer for this service")
                 warden.registerServiceWithLoadBalancer(logger, service)
             }
         }       
@@ -138,14 +137,14 @@ func (warden *Warden) startRegistrar(logger func(s string), configuration *Confi
 } // startRegistrar
 
 func (warden *Warden) getServiceBackends(logger func(s string), service *ServiceDescription) []string {
-    logger(fmt.Sprintf("getServiceBackends('%s')", service.Name))
+    logger(fmt.Sprintf("... getServiceBackends('%s')", service.Name))
     
     backendName := fmt.Sprintf("backend:%s", service.BackendName)
     
     result, err := warden.redisLocal.HGetAllMap(backendName).Result()
 
     if err != nil {
-        logger(fmt.Sprintf("problem while getting backend hash from redis: %s", err))
+        logger(fmt.Sprintf("... problem while getting backend hash from redis: %s", err))
         return nil
     }
     
@@ -161,7 +160,7 @@ func (warden *Warden) getServiceBackends(logger func(s string), service *Service
 } // getServiceBackends
 
 func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *ServiceDescription) {
-    logger(fmt.Sprintf("ensureServiceHasFrontend('%s')", service.Name))
+    logger(fmt.Sprintf("... ensureServiceHasFrontend('%s')", service.Name))
     
     // use warden.redisLocal client to check if this service has a frontend in nginx
     // check redis for 'frontend:' + service.Site
@@ -169,55 +168,55 @@ func (warden *Warden) ensureServiceHasFrontend(logger func(s string), service *S
     frontendName := fmt.Sprintf("frontend:%s%s", service.LoadBalancerUrl, service.Site)
     frontendExists, err := warden.redisLocal.Exists(frontendName).Result()
     if err != nil {
-        logger(fmt.Sprintf("problem while checking redis: %s", err))
+        logger(fmt.Sprintf("... problem while checking redis: %s", err))
         return
     }
     
     if frontendExists {
-        logger(fmt.Sprintf("found frontend for %s", service.Name))
+        logger(fmt.Sprintf("... found frontend for %s", service.Name))
         // frontendContents, err := warden.redisLocal.Get(frontendName).Result()
         // if frontendContents != service.BackendName {
         //     logger(fmt.Sprintf("frontend for %s doesn't match backend name %s (actual: %s)", service.Site, service.BackendName, frontendContents))
         // }
     } else {
-        logger(fmt.Sprintf("no frontend found for %s", service.Name))
+        logger(fmt.Sprintf("... no frontend found for %s", service.Name))
         
         err := warden.redisLocal.Set(frontendName, service.BackendName, 0).Err()
         
         if err != nil {
-            logger(fmt.Sprintf("problem while trying to create frontend with name %s: %s", frontendName, err))
+            logger(fmt.Sprintf("... problem while trying to create frontend with name %s: %s", frontendName, err))
             return
         }
     }
 } // ensureServiceHasFrontend
 
 func (warden *Warden) removeBackend(logger func(s string), service *ServiceDescription, backendAddress string) {
-    logger(fmt.Sprintf("removeBackend('%s', '%s')", service.Name, backendAddress))
+    logger(fmt.Sprintf("... removeBackend('%s', '%s')", service.Name, backendAddress))
     
     backendName := fmt.Sprintf("backend:%s", service.BackendName)
     err := warden.redisLocal.HDel(backendName, backendAddress).Err()
     if err != nil {
-        logger(fmt.Sprintf("problem while trying to remove backend: %s", err))
+        logger(fmt.Sprintf("... problem while trying to remove backend: %s", err))
     }
 } // removeBackend
 
 func (warden *Warden) addBackend(logger func(s string), service *ServiceDescription, address string) {
-    logger(fmt.Sprintf("addBackend('%s', '%s')", service.Name, address))
+    logger(fmt.Sprintf("... addBackend('%s', '%s')", service.Name, address))
     
     backendName := fmt.Sprintf("backend:%s", service.BackendName)
     err := warden.redisLocal.HSet(backendName, address, "0").Err()
     if err != nil {
-        logger(fmt.Sprintf("problem while trying to add backend: %s", err))
+        logger(fmt.Sprintf("... problem while trying to add backend: %s", err))
     }
 } // addBackend
 
 func (warden *Warden) getMatchingContainers(logger func(s string), containerName string) []Container {
-    logger(fmt.Sprintf("getMatchingContainers('%s')...", containerName))
+    logger(fmt.Sprintf("... getMatchingContainers('%s')...", containerName))
     cmdName := "docker"
     cmdArgs := []string{"ps", "-a", "--filter=status=running"}
     out, err := exec.Command(cmdName, cmdArgs...).Output()
     if err != nil {
-        logger(fmt.Sprintf("getMatchingContainers: problem: %s\n", err))
+        logger(fmt.Sprintf("problem: %s\n", err))
         return nil
     }
     
@@ -231,7 +230,7 @@ func (warden *Warden) getMatchingContainers(logger func(s string), containerName
             containerId := re1.FindStringSubmatch(line)[1]
             container := Container { Id: containerId, IPAddress: warden.getContainerIPAddress(logger, containerId) }
             containers = append(containers, container)
-            logger(fmt.Sprintf("found matching container id:%s ipaddress:%s", container.Id, container.IPAddress))
+            logger(fmt.Sprintf("... found matching container id:%s ipaddress:%s", container.Id, container.IPAddress))
         }
     }
         
@@ -244,7 +243,7 @@ func (warden *Warden) getContainerIPAddress(logger func(s string), containerId s
     out, err := exec.Command(cmdName, cmdArgs...).Output()
     
     if err != nil {
-        logger(fmt.Sprintf("problem while inspect container with id %s: %s", containerId, err))
+        logger(fmt.Sprintf("... problem while inspect container with id %s: %s", containerId, err))
         return ""
     }
     
@@ -261,7 +260,7 @@ func (warden *Warden) getContainerIPAddress(logger func(s string), containerId s
 } // inspectContainer
 
 func (warden *Warden) registerServiceWithLoadBalancer(logger func (s string), service *ServiceDescription) {
-    logger(fmt.Sprintf("registerServiceWithLoadBalancer('%s')", service.Name))
+    logger(fmt.Sprintf("... registerServiceWithLoadBalancer('%s')", service.Name))
     svc := elb.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
     
     params := &elb.RegisterInstancesWithLoadBalancerInput{
@@ -276,12 +275,12 @@ func (warden *Warden) registerServiceWithLoadBalancer(logger func (s string), se
     _, err := svc.RegisterInstancesWithLoadBalancer(params)
     
     if err != nil {
-        logger(fmt.Sprintf("problem while registering service with load balancer: %s", err))
+        logger(fmt.Sprintf("... problem while registering service with load balancer: %s", err))
     }
 } // registerServiceWithLoadBalancer
 
 func (warden *Warden) deregisterServiceFromLoadBalancer(logger func (s string), service *ServiceDescription) {
-    logger(fmt.Sprintf("deregisterServiceFromLoadBalancer('%s')", service.Name))
+    logger(fmt.Sprintf("... deregisterServiceFromLoadBalancer('%s')", service.Name))
     svc := elb.New(session.New(), &aws.Config{Region: aws.String(warden.region)})
     
     params := &elb.DeregisterInstancesFromLoadBalancerInput{
@@ -296,6 +295,6 @@ func (warden *Warden) deregisterServiceFromLoadBalancer(logger func (s string), 
     _, err := svc.DeregisterInstancesFromLoadBalancer(params)
     
     if err != nil {
-        logger(fmt.Sprintf("problem while deregistering service from load balancer: %s", err))
+        logger(fmt.Sprintf("... problem while deregistering service from load balancer: %s", err))
     }
 } // deregisterServiceFromLoadBalancer

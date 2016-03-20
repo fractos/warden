@@ -12,7 +12,7 @@ import (
     "os/exec"
 )
 
-func (warden *Warden) startRegistrar(logger func(s string)) {
+func (warden *Warden) startRegistrar(logger func(s string), configuration *Configuration) {
     logger("starting...")
     for {
 
@@ -131,14 +131,9 @@ func (warden *Warden) startRegistrar(logger func(s string)) {
             }
         }       
         
-        time.Sleep(1 * time.Second)
+        logger("sleeping...")
         
-        pong, err := warden.redisLocal.Ping().Result()
-        if err != nil {
-            panic(err)
-        } else {
-            logger(pong)
-        }
+        time.Sleep(time.Duration(configuration.RegistrarSleepTimeSeconds) * time.Second)        
     }
 } // startRegistrar
 

@@ -29,6 +29,8 @@ type Configuration struct {
     NginxRedisAddress string `json:"nginxRedisAddress"`
     NginxRedisDatabaseNumber int64 `json:"nginxRedisDatabaseNumber"`
     ServiceDescriptionFilename string `json:"serviceDescriptionFilename"`
+    RegistrarSleepTimeSeconds int64 `json:"registrarSleepTimeSeconds"`
+    ManagerSleepTimeSeconds int64 `json:"managerSleepTimeSeconds"`
 }
 
 type Container struct {

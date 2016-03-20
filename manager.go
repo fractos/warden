@@ -8,7 +8,7 @@ import (
 //    "github.com/aws/aws-sdk-go"
 )
 
-func (warden *Warden) startManager(logger func(s string)) {
+func (warden *Warden) startManager(logger func(s string), configuration *Configuration) {
     
     logger("starting...")
     
@@ -36,7 +36,7 @@ func (warden *Warden) startManager(logger func(s string)) {
         }   
         
         logger("sleeping...")
-        time.Sleep(5 * time.Second)
+        time.Sleep(time.Duration(configuration.ManagerSleepTimeSeconds) * time.Second)
     }
     
 } // manager
@@ -168,6 +168,7 @@ func (warden *Warden) getTimestamp() string {
 
 func (warden *Warden) getCurrentServiceManager(logger func(s string)) ServiceManager {
     vals, err := warden.redisServiceManagement.HGetAllMap("service-manager").Result()
+    
     if err != nil {
         panic(err)
     }

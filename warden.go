@@ -13,21 +13,8 @@ import (
     // "os/exec"
 )
 
-// Warden holds basic instance data plus redis clients for both global service management and intra-host load-balancing.
-type Warden struct {
-    region string
-    availabilityZone string
-    instanceId string
-    services []*ServiceDescription
-    redisServiceManagement *redis.Client
-    redisLocal *redis.Client
-}
-
-const MaxHeartbeatAge = 300
 const GuardTime = 15
 const ActivityPause = 300
-const ServiceManagerPause = 30
-const CandidateExpiry = 30
 
 func wardenLog(s string) {
     fmt.Printf("warden: %s\n", s)
@@ -44,6 +31,7 @@ func (warden *Warden) Start() {
 
     wardenLog(fmt.Sprintf("region is %s, availability zone is %s, instance ID is %s", warden.region, warden.availabilityZone, warden.instanceId))
 
+	// TODO: read config filename from parameters
     configReader := NewConfigurationReader("config.json")
     configuration := configReader.Read()
     
@@ -57,12 +45,6 @@ func (warden *Warden) Start() {
     } else {
         wardenLog("our availability zone is not active!")
     }
-
-    warden.redisServiceManagement = redis.NewClient(&redis.Options{
-        Addr: configuration.ServiceManagementRedisAddress,
-        Password: "",
-        DB: configuration.ServiceManagementRedisDatabaseNumber,
-    })
     
     warden.redisLocal = redis.NewClient(&redis.Options{
         Addr: configuration.NginxRedisAddress,
@@ -70,12 +52,9 @@ func (warden *Warden) Start() {
         DB: configuration.NginxRedisDatabaseNumber,
     })
     
-    // start registrar coroutine
-    go warden.startRegistrar(func(s string) { fmt.Printf("registrar: %s\n", s) }, configuration)
-    
-    // start manager coroutine
-    warden.startManager(func(s string) { fmt.Printf("manager: %s\n", s) }, configuration)
-    
+    // start registrar
+    warden.startRegistrar(func(s string) { fmt.Printf("registrar: %s\n", s) }, configuration)
+	
     fmt.Println("Warden finishing...")    
 } // main
 

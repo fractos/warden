@@ -1,13 +1,9 @@
 package warden
 
 import (
-    // "io"
-    // "fmt"
     "encoding/json"
     "io/ioutil"
     "log"
-//    "time"
-//    "strconv"
 )
 
 type ConfigurationReader struct {
